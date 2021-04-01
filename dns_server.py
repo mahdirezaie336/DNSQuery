@@ -3,9 +3,12 @@ import threading
 
 
 def handler(client_socket: socket.socket, address):
+    """ This is handler of client sockets. It just sends 'good boy' message. """
+    # Sending hints
     client_socket.send(b'\nSend "exit" to terminate safely.\n')
 
     try:
+        # Handler's infinite loop
         while True:
             data = c.recv(4096)
             data_in_string = data.decode('utf-8')
@@ -31,11 +34,14 @@ s.listen()
 
 # Creating threads
 try:
+    # Listener's infinite loop
     while True:
         print('Waiting for client...')
         c, address = s.accept()
         print('Client accepted: ', str(address[0]) + ':' + str(address[1]))
         threading.Thread(target=handler, args=(c, address)).start()
 except:
+    pass
+finally:
     print('Closing listener...')
     s.close()
