@@ -8,11 +8,14 @@ def handler(client_socket: socket.socket, address):
     try:
         while True:
             data = c.recv(4096)
-            data_in_string = data.decode('uft-8')
+            data_in_string = data.decode('utf-8')
             print('from client:', address[0], data_in_string)
             if data_in_string.strip() == 'exit':
+                client_socket.send(b'Thanks for being my friend...\n')
                 break
             client_socket.send(b'Good job boy!\n')
+    except:
+        pass
     finally:
         print('Connection closed:', address[0], address[1])
         client_socket.close()
@@ -33,5 +36,6 @@ try:
         c, address = s.accept()
         print('Client accepted: ', str(address[0]) + ':' + str(address[1]))
         threading.Thread(target=handler, args=(c, address)).start()
-finally:
+except:
+    print('Closing listener...')
     s.close()
