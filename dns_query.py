@@ -1,6 +1,5 @@
 import socket
 import binascii
-from collections import OrderedDict
 
 
 class DNSQuery:
@@ -87,55 +86,55 @@ class DNSQueryHandler:
 
         ID = message[0:4]
         query_params = message[4:8]
-        QDCOUNT = message[8:12]
-        ANCOUNT = message[12:16]
-        NSCOUNT = message[16:20]
-        ARCOUNT = message[20:24]
+        qd_count = message[8:12]
+        an_count = message[12:16]
+        ns_count = message[16:20]
+        ar_count = message[20:24]
 
         # Answer section
         ANSWER_SECTION_STARTS = self.msg_len
 
-        num_answers = max([int(ANCOUNT, 16), int(NSCOUNT, 16), int(ARCOUNT, 16)])
+        num_answers = max([int(an_count, 16), int(ns_count, 16), int(ar_count, 16)])
         if num_answers > 0:
             res.append("\n# ANSWER SECTION")
 
             for ANSWER_COUNT in range(num_answers):
                 if ANSWER_SECTION_STARTS < len(message):
-                    ANAME = message[ANSWER_SECTION_STARTS:ANSWER_SECTION_STARTS + 4]  # Refers to Question
-                    ATYPE = message[ANSWER_SECTION_STARTS + 4:ANSWER_SECTION_STARTS + 8]
-                    ACLASS = message[ANSWER_SECTION_STARTS + 8:ANSWER_SECTION_STARTS + 12]
+                    a_name = message[ANSWER_SECTION_STARTS:ANSWER_SECTION_STARTS + 4]  # Refers to Question
+                    a_type = message[ANSWER_SECTION_STARTS + 4:ANSWER_SECTION_STARTS + 8]
+                    a_class = message[ANSWER_SECTION_STARTS + 8:ANSWER_SECTION_STARTS + 12]
                     TTL = int(message[ANSWER_SECTION_STARTS + 12:ANSWER_SECTION_STARTS + 20], 16)
-                    RDLENGTH = int(message[ANSWER_SECTION_STARTS + 20:ANSWER_SECTION_STARTS + 24], 16)
-                    RDDATA = message[ANSWER_SECTION_STARTS + 24:ANSWER_SECTION_STARTS + 24 + (RDLENGTH * 2)]
+                    rd_length = int(message[ANSWER_SECTION_STARTS + 20:ANSWER_SECTION_STARTS + 24], 16)
+                    r_data = message[ANSWER_SECTION_STARTS + 24:ANSWER_SECTION_STARTS + 24 + (rd_length * 2)]
 
-                    if int(ATYPE, 16) == DNSQuery.get_record_type_value("A"):
-                        octets = [RDDATA[i:i + 2] for i in range(0, len(RDDATA), 2)]
+                    if int(a_type, 16) == DNSQuery.get_record_type_value("A"):
+                        octets = [r_data[i:i + 2] for i in range(0, len(r_data), 2)]
                         RDDATA_decoded = ".".join(list(map(lambda x: str(int(x, 16)), octets)))
                     else:
                         RDDATA_decoded = ".".join(
                             map(lambda p: binascii.unhexlify(p).decode('iso8859-1'),
-                                DNSQueryHandler.parse_parts(RDDATA, 0, [])))
+                                DNSQueryHandler.parse_parts(r_data, 0, [])))
 
-                    ANSWER_SECTION_STARTS = ANSWER_SECTION_STARTS + 24 + (RDLENGTH * 2)
+                    ANSWER_SECTION_STARTS = ANSWER_SECTION_STARTS + 24 + (rd_length * 2)
 
                 try:
-                    ATYPE
+                    a_type
                 except NameError:
                     None
                 else:
                     res.append("# ANSWER " + str(ANSWER_COUNT + 1))
-                    res.append("QDCOUNT: " + str(int(QDCOUNT, 16)))
-                    res.append("ANCOUNT: " + str(int(ANCOUNT, 16)))
-                    res.append("NSCOUNT: " + str(int(NSCOUNT, 16)))
-                    res.append("ARCOUNT: " + str(int(ARCOUNT, 16)))
+                    res.append("QDCOUNT: " + str(int(qd_count, 16)))
+                    res.append("ANCOUNT: " + str(int(an_count, 16)))
+                    res.append("NSCOUNT: " + str(int(ns_count, 16)))
+                    res.append("ARCOUNT: " + str(int(ar_count, 16)))
 
-                    res.append("ANAME: " + ANAME)
-                    res.append("ATYPE: " + ATYPE + " (\"" + DNSQuery.get_record_type_value(int(ATYPE, 16)) + "\")")
-                    res.append("ACLASS: " + ACLASS)
+                    res.append("ANAME: " + a_name)
+                    res.append("ATYPE: " + a_type + " (\"" + DNSQuery.get_record_type_value(int(a_type, 16)) + "\")")
+                    res.append("ACLASS: " + a_class)
 
                     res.append("\nTTL: " + str(TTL))
-                    res.append("RDLENGTH: " + str(RDLENGTH))
-                    res.append("RDDATA: " + RDDATA)
+                    res.append("RDLENGTH: " + str(rd_length))
+                    res.append("RDDATA: " + r_data)
                     res.append("RDDATA decoded (result): " + RDDATA_decoded + "\n")
 
         print("\n".join(res))
