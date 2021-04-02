@@ -1,13 +1,13 @@
 import socket
 import binascii
-import main
+# from main import decode_message
 
 
 class DNSQuery:
 
-    def __init__(self, address, type='A', q_class=1, query_id='eeee'):
+    def __init__(self, address, q_type='A', q_class=1, query_id='eeee'):
         self.header_fields = [
-            '{:04x}'.format(int(id, 16)),           # ID
+            '{:04x}'.format(int(query_id, 16)),           # ID
             '{:04x}'.format(int(''.join((
                 '0',                                # QR
                 '0000',                             # OPCODE
@@ -23,15 +23,35 @@ class DNSQuery:
             '{:04x}'.format(0),                    # NSCOUNT
             '{:04x}'.format(0)                     # ARCOUNT
         ]
-        self.question_field = [
+        self.question_fields = (
             address,                                    # QNAME
-            DNSQuery.get_record_type_value(type),       # QTYPE
+            DNSQuery.get_record_type_value(q_type),       # QTYPE
             q_class                                     # QCLASS
-        ]
+        )
 
-    def generate_message(self):
+    def generate_message(self) -> str:
+        """ Generates query message based on given fields into a string of hexadecimals. """
         message = ''.join(self.header_fields)
 
+        # Adding address to the message
+        address_parts = self.question_fields[0].split(".")
+        for part in address_parts:
+            address_len = "{:02x}".format(len(part))
+            address_part = binascii.hexlify(part.encode())
+            message += address_len
+            message += address_part.decode()
+
+        # Terminating bits for QNAME
+        message += '00'
+
+        # Adding QTYPE and QCLASS
+        message += '{:04x}'.format(self.question_fields[1])
+        message += '{:04x}'.format(self.question_fields[2])
+
+        return message
+
+    def __str__(self):
+        return self.generate_message()
 
     @staticmethod
     def get_record_type_value(record_type):
@@ -41,9 +61,21 @@ class DNSQuery:
         return types.index(record_type) if isinstance(record_type, str) else types[record_type]
 
 
+class DNSQueryHandler:
+
+    def __init__(self, server_address = '1.1.1.1'):
+        self.server_address = server_address
+        self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def send_message(self, query: DNSQuery):
+        self.dns_socket.sendto(binascii.unhexlify(str(message)), (self.server_address, 53))
+
+    def get_response(self) -> :
+
 dns_server = '1.1.1.1'
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.sendto(binascii.unhexlify('aaaa010000010000000000000667697468756203636f6d0000010001'), (dns_server, 53))
+message = DNSQuery('ping.eu').generate_message()
+print('message is:', message)
+s.sendto(binascii.unhexlify(message), (dns_server, 53))
 data, _ = s.recvfrom(4096)
-print(main.decode_message(binascii.hexlify(data).decode('utf-8')))
