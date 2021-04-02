@@ -62,8 +62,8 @@ class DNSQuery:
 
 class DNSQueryHandler:
 
-    def __init__(self, server_address='1.1.1.1'):
-        self.server_address = server_address
+    def __init__(self, server_address='1.1.1.1', port=53):
+        self.server_address = (server_address, port)
         self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.response = None
         self.msg_len = 0
@@ -72,7 +72,7 @@ class DNSQueryHandler:
         msg = query.generate_message()
         msg = msg.replace(" ", "").replace("\n", "")
         self.msg_len = len(msg)
-        self.dns_socket.sendto(binascii.unhexlify(msg), (self.server_address, 53))
+        self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
 
         data, _ = self.dns_socket.recvfrom(4096)
         self.response = binascii.hexlify(data).decode('utf-8')
