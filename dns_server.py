@@ -15,8 +15,8 @@ try:
     while True:
         print('Waiting for message...')
         message, address = s.recvfrom(4096)
-        print('Client accepted: ', str(address))
-        print('Message is:', binascii.hexlify(message))
+        print('A message from: ', str(address))
+        print('Message:', binascii.hexlify(message))
         data = binascii.unhexlify('eeee818000010001000000000470696e670265750000010001c00c0001000100014889000458c62e3c')
         print('Sending response...')
         s.sendto(data, address)
