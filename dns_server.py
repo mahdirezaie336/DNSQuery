@@ -23,5 +23,5 @@ try:
 except:
     pass
 finally:
-    print('\nClosing listener...')
+    print('\nClosing server...')
     s.close()
