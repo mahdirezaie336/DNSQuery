@@ -4,6 +4,9 @@ import binascii
 
 class DNSQuery:
 
+    types = ["ERROR", "A", "NS", "MD", "MF", "CNAME", "SOA", "MB", "MG", "MR", "NULL", "WKS", "PTR", "HINFO",
+             "MINFO", "MX", "TXT", 'RP', 'AFSDB', 'X25', 'ISDN']
+
     def __init__(self, address, q_type='A', q_class=1, query_id='eeee'):
         self.header_fields = [
             '{:04x}'.format(int(query_id, 16)),  # ID
@@ -54,10 +57,7 @@ class DNSQuery:
 
     @staticmethod
     def get_record_type_value(record_type):
-        types = ["ERROR", "A", "NS", "MD", "MF", "CNAME", "SOA", "MB", "MG", "MR", "NULL", "WKS", "PTS", "HINFO",
-                 "MINFO", "MX", "TXT"]
-
-        return types.index(record_type) if isinstance(record_type, str) else types[record_type]
+        return DNSQuery.types.index(record_type) if isinstance(record_type, str) else DNSQuery.types[record_type]
 
 
 class DNSQueryHandler:
@@ -72,6 +72,9 @@ class DNSQueryHandler:
 
         return response_dict['RDDATA_DECODED'], response_dict
 
+    def send_csv(self):
+        pass
+
     def send_udp_message(self, msg) -> str:
         self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
         data, _ = self.dns_socket.recvfrom(4096)
@@ -81,6 +84,7 @@ class DNSQueryHandler:
     def decode_message(self, message: str) -> dict:
 
         # Decoding header fields
+
         result = {'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
                   'QUERY_PARAMS': '{:016b}'.format(int(message[4:8], 16)),
                   'QDCOUNT': str(int(qd_count := message[8:12], 16)),
@@ -89,6 +93,7 @@ class DNSQueryHandler:
                   'ARCOUNT': str(int(ar_count := message[20:24], 16))}
 
         # Decoding question fields
+
         q_name_parts = DNSQueryHandler.parse_parts(message, 24, [])
         offset = 26 + (len("".join(q_name_parts))) + (len(q_name_parts) * 2)
         q_type = message[offset: (offset := offset + 4)]
@@ -100,11 +105,13 @@ class DNSQueryHandler:
         result['QCLASS'] = int(q_class, 16)
 
         # Decoding answer fields
+
         num_answers = max([int(an_count, 16), int(ns_count, 16), int(ar_count, 16)])
         if num_answers > 0:
 
             for _ in range(num_answers):
                 if offset < len(message):
+
                     a_name = message[offset: (offset := offset + 4)]
                     a_type = message[offset: (offset := offset + 4)]
                     a_class = message[offset: (offset := offset + 4)]
