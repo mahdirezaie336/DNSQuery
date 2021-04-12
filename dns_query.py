@@ -68,19 +68,26 @@ class DNSQueryHandler:
         self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def send_single_request(self, query: DNSQuery) -> (str, dict):
+        """ Sends a single dns query.
+            :returns response as a dictionary and RDData as a string.
+            :param query A DNSQuery object to send to DNS server.
+            """
+
         response = self.send_udp_message(query.generate_message())
         response_dict = self.decode_message(response)
 
         return response_dict['RDDATA_DECODED'], response_dict
 
     def send_multi_requests(self, source_file_address: str, destination_file_address: str) -> None:
+
         """ Reads source csv file and sends queries to DNS server.
             The csv file columns must be like this:
 
                 No.     Destination Address     Type    DNS Server
 
             e.g: 1,ping.eu,A,1.1.1.1
-        """
+            """
+
         result = [("No.", "AType", "TTL", "RDData")]
 
         # Reading queries from source csv file
@@ -101,13 +108,18 @@ class DNSQueryHandler:
                 obj.writerow(item)
 
     def send_udp_message(self, msg: str) -> str:
+        """ Sends a udp message which is in hexadecimal format inside a string.
+            :returns udp response in hexadecimal format inside a string
+            """
         self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
         data, _ = self.dns_socket.recvfrom(4096)
 
         return binascii.hexlify(data).decode('utf-8')
 
     def decode_message(self, message: str) -> dict:
-
+        """ Decodes a dns query inside a string in hexadecimal format.
+            :returns Decoded message in a dictionary
+            """
         # Decoding header fields
 
         result = {'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
