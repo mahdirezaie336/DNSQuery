@@ -1,5 +1,6 @@
 import socket
 import binascii
+import csv
 
 
 class DNSQuery:
@@ -72,10 +73,34 @@ class DNSQueryHandler:
 
         return response_dict['RDDATA_DECODED'], response_dict
 
-    def send_csv(self):
-        pass
+    def send_multi_requests(self, source_file_address: str, destination_file_address: str) -> None:
+        """ Reads source csv file and sends queries to DNS server.
+            The csv file columns must be like this:
 
-    def send_udp_message(self, msg) -> str:
+                No.     Destination Address     Type    DNS Server
+
+            e.g: 1,ping.eu,A,1.1.1.1
+        """
+        result = [("No.", "AType", "TTL", "RDData")]
+
+        # Reading queries from source csv file
+
+        with open(source_file_address, 'r') as csv_in:
+            for row in csv.reader(csv_in):
+                if row[0] == "No.":
+                    continue
+                query = DNSQuery(row[1], q_type=row[2], query_id=row[0])
+                _, res_dic = self.send_single_request(query)
+                result.append((row[0], res_dic['ATYPE'], res_dic['TTL'], res_dic['RDDATA_DECODED']))
+
+        # Saving queries result into destination address
+
+        with open(destination_file_address, 'w') as csv_out:
+            obj = csv.writer(csv_out, )
+            for item in result:
+                obj.writerow(item)
+
+    def send_udp_message(self, msg: str) -> str:
         self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
         data, _ = self.dns_socket.recvfrom(4096)
 
