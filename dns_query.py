@@ -66,11 +66,11 @@ class DNSQueryHandler:
         self.server_address = (server_address, port)
         self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def send_single_request(self, query: DNSQuery) -> str:
+    def send_single_request(self, query: DNSQuery) -> (str, dict):
         response = self.send_udp_message(query.generate_message())
         response_dict = self.decode_message(response)
 
-        return response_dict['RDDATA_DECODED']
+        return response_dict['RDDATA_DECODED'], response_dict
 
     def send_udp_message(self, msg) -> str:
         self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
@@ -89,10 +89,17 @@ class DNSQueryHandler:
                   'ARCOUNT': str(int(ar_count := message[20:24], 16))}
 
         # Decoding question fields
+        q_name_parts = DNSQueryHandler.parse_parts(message, 24, [])
+        offset = 26 + (len("".join(q_name_parts))) + (len(q_name_parts) * 2)
+        q_type = message[offset: (offset := offset + 4)]
+        q_class = message[offset: (offset := offset + 4)]
+
+        result['QNAME'] = q_name_parts
+        result['QNAME_DECODED'] = '.'.join([binascii.unhexlify(x).decode() for x in q_name_parts])
+        result['QTYPE'] = DNSQuery.get_record_type_value(int(q_type, 16))
+        result['QCLASS'] = int(q_class, 16)
 
         # Answer section
-        # TODO:
-        offset = self.msg_len
 
         num_answers = max([int(an_count, 16), int(ns_count, 16), int(ar_count, 16)])
         if num_answers > 0:
@@ -104,15 +111,15 @@ class DNSQueryHandler:
                     a_class = message[offset + 8:offset + 12]
                     TTL = int(message[offset + 12:offset + 20], 16)
                     rd_length = int(message[offset + 20:offset + 24], 16)
-                    r_data = message[offset + 24:offset + 24 + (rd_length * 2)]
+                    rd_data = message[offset + 24:offset + 24 + (rd_length * 2)]
 
-                    if int(a_type, 16) == DNSQuery.get_record_type_value("A"):
-                        octets = [r_data[i:i + 2] for i in range(0, len(r_data), 2)]
-                        RDDATA_decoded = ".".join(list(map(lambda x: str(int(x, 16)), octets)))
+                    if int(a_type, 16) == DNSQuery.get_record_type_value('A'):
+                        octets = [rd_data[i:i + 2] for i in range(0, len(rd_data), 2)]
+                        RDDATA_decoded = ".".join(str(int(x, 16)) for x in octets)
                     else:
                         RDDATA_decoded = ".".join(
                             map(lambda p: binascii.unhexlify(p).decode('iso8859-1'),
-                                DNSQueryHandler.parse_parts(r_data, 0, [])))
+                                DNSQueryHandler.parse_parts(rd_data, 0, [])))
 
                     offset = offset + 24 + (rd_length * 2)
 
@@ -123,7 +130,7 @@ class DNSQueryHandler:
 
                     result['TTL'] = str(TTL)
                     result['RDLENGTH'] = str(rd_length)
-                    result['RDDATA'] = r_data
+                    result['RDDATA'] = rd_data
                     result['RDDATA_DECODED'] = RDDATA_decoded
 
         return result
