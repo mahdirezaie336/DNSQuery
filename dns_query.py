@@ -99,33 +99,28 @@ class DNSQueryHandler:
         result['QTYPE'] = DNSQuery.get_record_type_value(int(q_type, 16))
         result['QCLASS'] = int(q_class, 16)
 
-        # Answer section
-
+        # Decoding answer fields
         num_answers = max([int(an_count, 16), int(ns_count, 16), int(ar_count, 16)])
         if num_answers > 0:
 
             for _ in range(num_answers):
                 if offset < len(message):
-                    a_name = message[offset:offset + 4]  # Refers to Question
-                    a_type = message[offset + 4:offset + 8]
-                    a_class = message[offset + 8:offset + 12]
-                    TTL = int(message[offset + 12:offset + 20], 16)
-                    rd_length = int(message[offset + 20:offset + 24], 16)
-                    rd_data = message[offset + 24:offset + 24 + (rd_length * 2)]
+                    a_name = message[offset: (offset := offset + 4)]
+                    a_type = message[offset: (offset := offset + 4)]
+                    a_class = message[offset: (offset := offset + 4)]
+                    TTL = int(message[offset: (offset := offset + 8)], 16)
+                    rd_length = int(message[offset: (offset := offset + 4)], 16)
+                    rd_data = message[offset: (offset := offset + 24 + (rd_length * 2))]
 
                     if int(a_type, 16) == DNSQuery.get_record_type_value('A'):
                         octets = [rd_data[i:i + 2] for i in range(0, len(rd_data), 2)]
                         RDDATA_decoded = ".".join(str(int(x, 16)) for x in octets)
                     else:
-                        RDDATA_decoded = ".".join(
-                            map(lambda p: binascii.unhexlify(p).decode('iso8859-1'),
-                                DNSQueryHandler.parse_parts(rd_data, 0, [])))
+                        RDDATA_decoded = ".".join(binascii.unhexlify(p).decode('iso8859-1') for p in
+                                                  self.parse_parts(rd_data, 0, []))
 
-                    offset = offset + 24 + (rd_length * 2)
-
-                    # res.append("ATYPE: " + a_type + " (\"" + DNSQuery.get_record_type_value(int(a_type, 16)) + "\")")
                     result['ANAME'] = a_name
-                    result['ATYPE'] = a_type
+                    result['ATYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
                     result['ACLASS'] = a_class
 
                     result['TTL'] = str(TTL)
