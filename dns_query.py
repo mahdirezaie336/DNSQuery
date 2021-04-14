@@ -77,7 +77,7 @@ class DNSQueryHandler:
         response = self.send_udp_message(query.generate_message())
         response_dict = self.decode_message(response)
 
-        return response_dict['RDDATA_DECODED'], response_dict
+        return response_dict.get('AN_RDATA_DECODED', 'No answer'), response_dict
 
     def send_multi_requests(self, source_file_address: str, destination_file_address: str) -> None:
         """ Reads source csv file and sends queries to DNS server.
@@ -91,7 +91,6 @@ class DNSQueryHandler:
         result = [("No.", "AType", "TTL", "RDData")]
 
         # Reading queries from source csv file
-
         with open(source_file_address, 'r') as csv_in:
             for row in csv.reader(csv_in):
                 if row[0] == "No.":
@@ -101,7 +100,6 @@ class DNSQueryHandler:
                 result.append((row[0], res_dic['ATYPE'], res_dic['TTL'], res_dic['RDDATA_DECODED']))
 
         # Saving queries result into destination address
-
         with open(destination_file_address, 'w') as csv_out:
             obj = csv.writer(csv_out, )
             for item in result:
@@ -122,17 +120,16 @@ class DNSQueryHandler:
             :returns Decoded message in a dictionary
             """
 
-        # Decoding header fields
-
-        result = {'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
+        # Decoding header section
+        result = {'Response RAW': message,
+                  'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
                   'QUERY_PARAMS': '{:016b}'.format(int(message[4:8], 16)),
                   'QDCOUNT': str(qd_count := int(message[8:12], 16)),
                   'ANCOUNT': str(an_count := int(message[12:16], 16)),
                   'NSCOUNT': str(ns_count := int(message[16:20], 16)),
                   'ARCOUNT': str(ar_count := int(message[20:24], 16))}
 
-        # Decoding question fields
-
+        # Decoding question section
         q_name_parts = DNSQueryHandler.parse_parts(message, 24, [])
         offset = 26 + (len("".join(q_name_parts))) + (len(q_name_parts) * 2)
         q_type = message[offset: (offset := offset + 4)]
@@ -143,36 +140,36 @@ class DNSQueryHandler:
         result['QTYPE'] = DNSQuery.get_record_type_value(int(q_type, 16))
         result['QCLASS'] = int(q_class, 16)
 
-        # Decoding answer fields
+        # Decoding answer section
+        for section in (sections := {'AN': an_count, 'NS': ns_count, 'AR': ar_count}):
 
-        if an_count > 0:
+            if sections[section] > 0:
 
-            for _ in range(an_count):
-                if offset < len(message):
+                for _ in range(sections[section]):
+                    if offset < len(message):
 
-                    a_name = message[offset: (offset := offset + 4)]
-                    a_type = message[offset: (offset := offset + 4)]
-                    a_class = message[offset: (offset := offset + 4)]
-                    TTL = int(message[offset: (offset := offset + 8)], 16)
-                    rd_length = int(message[offset: (offset := offset + 4)], 16)
-                    rd_data = message[offset: (offset := offset + 24 + (rd_length * 2))]
+                        a_name = message[offset: (offset := offset + 4)]
+                        a_type = message[offset: (offset := offset + 4)]
+                        a_class = message[offset: (offset := offset + 4)]
+                        TTL = int(message[offset: (offset := offset + 8)], 16)
+                        rd_length = int(message[offset: (offset := offset + 4)], 16)
+                        rd_data = message[offset: (offset := offset + 24 + (rd_length * 2))]
 
-                    if int(a_type, 16) == DNSQuery.get_record_type_value('A'):
-                        octets = [rd_data[i:i + 2] for i in range(0, len(rd_data), 2)]
-                        RDDATA_decoded = ".".join(str(int(x, 16)) for x in octets)
-                    else:
-                        RDDATA_decoded = ".".join(binascii.unhexlify(p).decode('iso8859-1') for p in
-                                                  self.parse_parts(rd_data, 0, []))
+                        if int(a_type, 16) == DNSQuery.get_record_type_value('A'):
+                            octets = [rd_data[i:i + 2] for i in range(0, len(rd_data), 2)]
+                            RDDATA_decoded = ".".join(str(int(x, 16)) for x in octets)
+                        else:
+                            RDDATA_decoded = ".".join(binascii.unhexlify(p).decode('iso8859-1') for p in
+                                                      self.parse_parts(rd_data, 0, []))
 
-                    result['ANAME'] = a_name
-                    result['ATYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
-                    result['ACLASS'] = a_class
+                        result[section + '_ANAME'] = a_name
+                        result[section + '_ATYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
+                        result[section + '_ACLASS'] = a_class
 
-                    result['TTL'] = str(TTL)
-                    result['RDLENGTH'] = str(rd_length)
-                    result['RDDATA'] = rd_data
-                    result['RDDATA_DECODED'] = RDDATA_decoded
-
+                        result[section + '_TTL'] = str(TTL)
+                        result[section + '_RDLENGTH'] = str(rd_length)
+                        result[section + '_RDDATA'] = rd_data
+                        result[section + '_RDDATA_DECODED'] = RDDATA_decoded
 
         return result
 
