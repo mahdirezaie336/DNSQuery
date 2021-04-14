@@ -1,8 +1,8 @@
 from dns_query import DNSQuery, DNSQueryHandler
 
 
-handler = DNSQueryHandler('1.1.1.1', port=53)
-query = DNSQuery('time.ir', q_type='PTR', rd='1')
+handler = DNSQueryHandler('198.41.0.4', port=53)
+query = DNSQuery('ping.eu', q_type='A', rd='0')
 
 response, res_dic = handler.send_single_request(query)
 for key in res_dic:
