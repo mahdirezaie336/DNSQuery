@@ -8,7 +8,7 @@ class DNSQuery:
     types = ["ERROR", "A", "NS", "MD", "MF", "CNAME", "SOA", "MB", "MG", "MR", "NULL", "WKS", "PTR", "HINFO",
              "MINFO", "MX", "TXT", 'RP', 'AFSDB', 'X25', 'ISDN']
 
-    def __init__(self, address, q_type='A', q_class=1, query_id='eeee'):
+    def __init__(self, address, q_type='A', q_class=1, query_id='eeee', rd='0'):
         self.header_fields = [
             '{:04x}'.format(int(query_id, 16)),  # ID
             '{:04x}'.format(int(''.join((
@@ -16,7 +16,7 @@ class DNSQuery:
                 '0000',  # OPCODE
                 '0',  # AA
                 '0',  # TC
-                '1',  # RD
+                rd,  # RD
                 '0',  # RA
                 '000',  # Z
                 '0000'  # RCODE
@@ -34,6 +34,7 @@ class DNSQuery:
 
     def generate_message(self) -> str:
         """ Generates query message based on given fields into a string of hexadecimals. """
+
         message = ''.join(self.header_fields)
 
         # Adding address to the message
@@ -79,7 +80,6 @@ class DNSQueryHandler:
         return response_dict['RDDATA_DECODED'], response_dict
 
     def send_multi_requests(self, source_file_address: str, destination_file_address: str) -> None:
-
         """ Reads source csv file and sends queries to DNS server.
             The csv file columns must be like this:
 
@@ -111,6 +111,7 @@ class DNSQueryHandler:
         """ Sends a udp message which is in hexadecimal format inside a string.
             :returns udp response in hexadecimal format inside a string
             """
+
         self.dns_socket.sendto(binascii.unhexlify(msg), self.server_address)
         data, _ = self.dns_socket.recvfrom(4096)
 
@@ -120,14 +121,15 @@ class DNSQueryHandler:
         """ Decodes a dns query inside a string in hexadecimal format.
             :returns Decoded message in a dictionary
             """
+
         # Decoding header fields
 
         result = {'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
                   'QUERY_PARAMS': '{:016b}'.format(int(message[4:8], 16)),
-                  'QDCOUNT': str(int(qd_count := message[8:12], 16)),
-                  'ANCOUNT': str(int(an_count := message[12:16], 16)),
-                  'NSCOUNT': str(int(ns_count := message[16:20], 16)),
-                  'ARCOUNT': str(int(ar_count := message[20:24], 16))}
+                  'QDCOUNT': str(qd_count := int(message[8:12], 16)),
+                  'ANCOUNT': str(an_count := int(message[12:16], 16)),
+                  'NSCOUNT': str(ns_count := int(message[16:20], 16)),
+                  'ARCOUNT': str(ar_count := int(message[20:24], 16))}
 
         # Decoding question fields
 
@@ -143,10 +145,9 @@ class DNSQueryHandler:
 
         # Decoding answer fields
 
-        num_answers = max([int(an_count, 16), int(ns_count, 16), int(ar_count, 16)])
-        if num_answers > 0:
+        if an_count > 0:
 
-            for _ in range(num_answers):
+            for _ in range(an_count):
                 if offset < len(message):
 
                     a_name = message[offset: (offset := offset + 4)]
@@ -171,6 +172,7 @@ class DNSQueryHandler:
                     result['RDLENGTH'] = str(rd_length)
                     result['RDDATA'] = rd_data
                     result['RDDATA_DECODED'] = RDDATA_decoded
+
 
         return result
 
