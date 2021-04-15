@@ -69,7 +69,6 @@ class DNSQueryHandler:
         self.server_address = (server_address, port)
         self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    @my_cache
     def send_single_request(self, query: DNSQuery) -> (str, dict):
         """ Sends a single dns query.
             :returns response as a dictionary and RDData as a string.
@@ -87,27 +86,29 @@ class DNSQueryHandler:
 
         return rd_data, response_dict
 
-    def send_iterative_query(self, query: DNSQuery) -> (str, dict):
+    @my_cache
+    def send_query(self, query: DNSQuery, is_iterative=False) -> (str, dict):
         """ Sends an iterative query. """
 
-        temp = self.server_address
         # query.header_fields[6] = '0'  # set RD to 0
         response, res_dict = self.send_single_request(query)
 
         # Searching for host ip
-        try:
-            while res_dict['ANCOUNT'] == 0 and res_dict['ARCOUNT'] != 0:
-                for additional_item in res_dict['Additional']:
-                    if additional_item['A_TYPE'] == 'A':
-                        self.server_address = (additional_item['RDDATA_DECODED'], 53)
-                        response, res_dict = self.send_single_request(query)
-                        break
-        finally:
-            self.server_address = temp
+        if is_iterative:
+            temp = self.server_address
+            try:
+                while res_dict['ANCOUNT'] == 0 and res_dict['ARCOUNT'] != 0:
+                    for additional_item in res_dict['Additional']:
+                        if additional_item['A_TYPE'] == 'A':
+                            self.server_address = (additional_item['RDDATA_DECODED'], 53)
+                            response, res_dict = self.send_single_request(query)
+                            break
+            finally:
+                self.server_address = temp
 
         # When not found
         if res_dict['ANCOUNT'] == 0:
-            raise Exception('Can not resolve address', res_dict['QNAME'])
+            raise Exception('Can not resolve address', res_dict['QNAME_DECODED'])
 
         return response, res_dict
 

@@ -3,10 +3,10 @@ from cache import load_cache_from_file, save_cache_to_file
 
 load_cache_from_file()
 try:
-    handler = DNSQueryHandler('1.1.1.1', port=53)
-    query = DNSQuery('aut.ac.ir', q_type='A', rd='1')
+    handler = DNSQueryHandler('198.41.0.4', port=53)
+    query = DNSQuery('aut.ac.ir', q_type='A', rd='0')
 
-    response, res_dic = handler.send_iterative_query(query)
+    response, res_dic = handler.send_query(query, is_iterative=True)
 
     for key in res_dic:
         print(key, ': ', res_dic[key])

@@ -21,11 +21,11 @@ def save_cache_to_file():
 
 
 def my_cache(f):
-    def g(self, query) -> (str, dict):
+    def g(self, query, is_iterative=False) -> (str, dict):
         data = cache_mem.get(str(query), 0)
         if isinstance(data, int):  # When data is not cached
             # Sending query to server
-            response, res_dic = f(self, query)
+            response, res_dic = f(self, query, is_iterative)
             cache_mem[str(query)] = data + 1
 
             # More than 3 times
