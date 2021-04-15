@@ -89,11 +89,13 @@ class DNSQueryHandler:
         """ Sends an iterative query. """
 
         temp = self.server_address
-        query.header_fields[6] = '0'  # set RD to 0
+        # query.header_fields[6] = '0'  # set RD to 0
         response, res_dict = self.send_single_request(query)
 
+        # Searching for host ip
         try:
             while res_dict['ANCOUNT'] == 0 and res_dict['ARCOUNT'] != 0:
+                print('Here')
                 for additional_item in res_dict['Additional']:
                     if additional_item['A_TYPE'] == 'A':
                         self.server_address = (additional_item['RDDATA_DECODED'], 53)
@@ -102,6 +104,7 @@ class DNSQueryHandler:
         finally:
             self.server_address = temp
 
+        # When not found
         if res_dict['ANCOUNT'] == 0:
             raise Exception('Can not resolve address', res_dict['QNAME'])
 
@@ -152,10 +155,10 @@ class DNSQueryHandler:
         result = {'Response RAW': message,
                   'ID': (ID := message[0:4]) + ': ' + str(int(message[0:4], 16)),
                   'QUERY_PARAMS': '{:016b}'.format(int(message[4:8], 16)),
-                  'QDCOUNT': str(qd_count := int(message[8:12], 16)),
-                  'ANCOUNT': str(an_count := int(message[12:16], 16)),
-                  'NSCOUNT': str(ns_count := int(message[16:20], 16)),
-                  'ARCOUNT': str(ar_count := int(message[20:24], 16))}
+                  'QDCOUNT': (qd_count := int(message[8:12], 16)),
+                  'ANCOUNT': (an_count := int(message[12:16], 16)),
+                  'NSCOUNT': (ns_count := int(message[16:20], 16)),
+                  'ARCOUNT': (ar_count := int(message[20:24], 16))}
 
         # Decoding question section
         q_name_parts = DNSQueryHandler.parse_parts(message, 24, [])
