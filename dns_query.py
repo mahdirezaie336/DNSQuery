@@ -1,6 +1,7 @@
 import socket
 import binascii
 import csv
+from cache import my_cache
 
 
 class DNSQuery:
@@ -68,6 +69,7 @@ class DNSQueryHandler:
         self.server_address = (server_address, port)
         self.dns_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+    @my_cache
     def send_single_request(self, query: DNSQuery) -> (str, dict):
         """ Sends a single dns query.
             :returns response as a dictionary and RDData as a string.
