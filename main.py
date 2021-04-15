@@ -3,8 +3,8 @@ from cache import load_cache_from_file, save_cache_to_file
 
 load_cache_from_file()
 try:
-    handler = DNSQueryHandler('198.41.0.4', port=53)
-    query = DNSQuery('aut.ac.ir', q_type='A', rd='0')
+    handler = DNSQueryHandler('1.1.1.1', port=53)
+    query = DNSQuery('aut.ac.ir', q_type='A', rd='1')
 
     response, res_dic = handler.send_iterative_query(query)
 
