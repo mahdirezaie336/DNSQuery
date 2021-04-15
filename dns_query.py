@@ -7,7 +7,7 @@ class DNSQuery:
 
     types = ["ERROR", "A", "NS", "MD", "MF", "CNAME", "SOA", "MB", "MG", "MR", "NULL", "WKS", "PTR", "HINFO",
              "MINFO", "MX", "TXT", 'RP', 'AFSDB', 'X25', 'ISDN', 'RT', 'NSAP', 'NSAP-PTR', 'SIG', 'KEY', 'PX',
-             'GPOS', 'AAAA']
+             'GPOS', 'AAAA']        # From Wikipedia
 
     def __init__(self, address, q_type='A', q_class=1, query_id='eeee', rd='0'):
         self.header_fields = [
@@ -141,13 +141,16 @@ class DNSQueryHandler:
         result['QTYPE'] = DNSQuery.get_record_type_value(int(q_type, 16))
         result['QCLASS'] = int(q_class, 16)
 
-        print(message)
         # Decoding answer section
-        for section in (sections := {'AN': an_count, 'NS': ns_count, 'AR': ar_count}):
+        for section in (sections := {'Answer': an_count, 'Authority': ns_count, 'Additional': ar_count}):
 
+            result[section] = []
             if sections[section] > 0:
 
                 for i in range(sections[section]):
+
+                    res = {}
+
                     if offset < len(message):
 
                         a_name = message[offset: (offset := offset + 4)]
@@ -165,14 +168,16 @@ class DNSQueryHandler:
                                                       self.parse_parts(rd_data, 0, []))
 
                         # print(int(a_type, 16), rd_length, rd_data, RDDATA_decoded)
-                        result[section + '_NAME_' + str(i)] = a_name
-                        result[section + '_TYPE_' + str(i)] = DNSQuery.get_record_type_value(int(a_type, 16))
-                        result[section + '_CLASS_' + str(i)] = a_class
+                        res['NAME'] = a_name
+                        res['TYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
+                        res['CLASS'] = a_class
 
-                        result[section + '_TTL_' + str(i)] = str(TTL)
-                        result[section + '_RDLENGTH_' + str(i)] = str(rd_length)
-                        result[section + '_RDDATA_' + str(i)] = rd_data
-                        result[section + '_RDDATA_DECODED_' + str(i)] = RDDATA_decoded
+                        res['TTL'] = str(TTL)
+                        res['RDLENGTH'] = str(rd_length)
+                        res['RDDATA'] = rd_data
+                        res['RDDATA_DECODED'] = RDDATA_decoded
+
+                    result[section].append(res)
 
         return result
 
