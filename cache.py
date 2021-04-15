@@ -1,4 +1,23 @@
+import pickle
+
+
+cache_file_address = 'cache.dict'
 cache_mem = {}
+
+
+def load_cache_from_file():
+    try:
+        global cache_mem
+        with open(cache_file_address, 'rb') as cache_file:
+            cache_mem = pickle.load(cache_file)
+    except:
+        pass
+
+
+def save_cache_to_file():
+    global cache_mem
+    with open(cache_file_address, 'wb') as cache_file:
+        pickle.dump(cache_mem, cache_file)
 
 
 def my_cache(f):

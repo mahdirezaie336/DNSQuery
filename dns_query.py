@@ -97,7 +97,6 @@ class DNSQueryHandler:
         # Searching for host ip
         try:
             while res_dict['ANCOUNT'] == 0 and res_dict['ARCOUNT'] != 0:
-                print('Here')
                 for additional_item in res_dict['Additional']:
                     if additional_item['A_TYPE'] == 'A':
                         self.server_address = (additional_item['RDDATA_DECODED'], 53)
