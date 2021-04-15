@@ -4,10 +4,9 @@ import csv
 
 
 class DNSQuery:
-
     types = ["ERROR", "A", "NS", "MD", "MF", "CNAME", "SOA", "MB", "MG", "MR", "NULL", "WKS", "PTR", "HINFO",
              "MINFO", "MX", "TXT", 'RP', 'AFSDB', 'X25', 'ISDN', 'RT', 'NSAP', 'NSAP-PTR', 'SIG', 'KEY', 'PX',
-             'GPOS', 'AAAA']        # From Wikipedia
+             'GPOS', 'AAAA']  # From Wikipedia
 
     def __init__(self, address, q_type='A', q_class=1, query_id='eeee', rd='0'):
         self.header_fields = [
@@ -78,7 +77,35 @@ class DNSQueryHandler:
         response = self.send_udp_message(query.generate_message())
         response_dict = self.decode_message(response)
 
-        return response_dict.get('AN_RDATA_DECODED', 'No answer'), response_dict
+        # Extracting RDDATA
+        try:
+            rd_data = response_dict['Answer'][0]['RDDATA_DECODED']
+        except IndexError:
+            rd_data = 'No answer'
+
+        return rd_data, response_dict
+
+    def send_iterative_query(self, query: DNSQuery) -> (str, dict):
+        """ Sends an iterative query. """
+
+        temp = self.server_address
+        query.header_fields[6] = '0'  # set RD to 0
+        response, res_dict = self.send_single_request(query)
+
+        try:
+            while res_dict['ANCOUNT'] == 0 and res_dict['ARCOUNT'] != 0:
+                for additional_item in res_dict['Additional']:
+                    if additional_item['A_TYPE'] == 'A':
+                        self.server_address = (additional_item['RDDATA_DECODED'], 53)
+                        response, res_dict = self.send_single_request(query)
+                        break
+        finally:
+            self.server_address = temp
+
+        if res_dict['ANCOUNT'] == 0:
+            raise Exception('Can not resolve address', res_dict['QNAME'])
+
+        return response, res_dict
 
     def send_multi_requests(self, source_file_address: str, destination_file_address: str) -> None:
         """ Reads source csv file and sends queries to DNS server.
@@ -168,9 +195,9 @@ class DNSQueryHandler:
                                                       self.parse_parts(rd_data, 0, []))
 
                         # print(int(a_type, 16), rd_length, rd_data, RDDATA_decoded)
-                        res['NAME'] = a_name
-                        res['TYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
-                        res['CLASS'] = a_class
+                        res['A_NAME'] = a_name
+                        res['A_TYPE'] = DNSQuery.get_record_type_value(int(a_type, 16))
+                        res['A_CLASS'] = a_class
 
                         res['TTL'] = str(TTL)
                         res['RDLENGTH'] = str(rd_length)
