@@ -1,3 +1,5 @@
 "No.","Destination","Type","DNS Server"
-1,ping.eu,A,1.1.1.1
+100,ping.eu,A,1.1.1.1
 2,google.com,A,1.1.1.1
+101,ping.eu,A,1.1.1.1
+102,yahoo.com,A,1.1.1.1

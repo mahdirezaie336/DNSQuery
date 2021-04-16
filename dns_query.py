@@ -9,7 +9,7 @@ class DNSQuery:
              "MINFO", "MX", "TXT", 'RP', 'AFSDB', 'X25', 'ISDN', 'RT', 'NSAP', 'NSAP-PTR', 'SIG', 'KEY', 'PX',
              'GPOS', 'AAAA']  # From Wikipedia
 
-    def __init__(self, address, q_type='A', q_class=1, query_id='eeee', rd='0'):
+    def __init__(self, address, q_type='A', q_class=1, query_id='eeee', rd='1'):
         self.header_fields = [
             '{:04x}'.format(int(query_id, 16)),  # ID
             '{:04x}'.format(int(''.join((
@@ -121,22 +121,17 @@ class DNSQueryHandler:
             e.g: 1,ping.eu,A,1.1.1.1
             """
 
-        result = [("No.", "AType", "TTL", "RDData")]
-
         # Reading queries from source csv file
-        with open(source_file_address, 'r') as csv_in:
+        with open(source_file_address, 'r') as csv_in, open(destination_file_address, 'w') as csv_out:
+            obj = csv.writer(csv_out)
+            obj.writerow(("No.", "RDData"))
             for row in csv.reader(csv_in):
                 if row[0] == "No.":
                     continue
                 query = DNSQuery(row[1], q_type=row[2], query_id=row[0])
-                _, res_dic = self.send_single_request(query)
-                result.append((row[0], res_dic['ATYPE'], res_dic['TTL'], res_dic['RDDATA_DECODED']))
+                response, res_dic = self.send_single_request(query)
 
-        # Saving queries result into destination address
-        with open(destination_file_address, 'w') as csv_out:
-            obj = csv.writer(csv_out, )
-            for item in result:
-                obj.writerow(item)
+                obj.writerow((row[0], response))        # Writing
 
     def send_udp_message(self, msg: str) -> str:
         """ Sends a udp message which is in hexadecimal format inside a string.

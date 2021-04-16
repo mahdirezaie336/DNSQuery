@@ -9,19 +9,20 @@ args = sys.argv
 if len(args) > 1:
     name_address = args[1]
 else:
-    name_address = 'aut.ac.ir'
+    name_address = 'ping.eu'
 
 if len(args) > 2:
-    port_number = int(args[2])
+    query_type = args[2]
 else:
-    port_number = 53
+    query_type = 'A'
 
 load_cache_from_file()
 try:
-    handler = DNSQueryHandler('198.41.0.4', port=port_number)
-    query = DNSQuery(name_address, q_type='A', rd='0')
+    handler = DNSQueryHandler('1.1.1.1', port=53)
+    query = DNSQuery(name_address, q_type=query_type, rd='1')
 
-    response, res_dic = handler.send_query(query, is_iterative=True)
+    # handler.send_multi_requests('./csv_template.csv', './csv_result.csv')
+    response, res_dic = handler.send_query(query, is_iterative=False)
 
     for key in res_dic:
         print(key, ': ', res_dic[key])
